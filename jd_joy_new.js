@@ -17,7 +17,8 @@ const http = require('http');
 const stream = require('stream');
 const zlib = require('zlib');
 const vm = require('vm');
-const {createCanvas, Image} = require('canvas');
+const PNG = require('png-js');
+const UA = require('./USER_AGENTS.js').USER_AGENT;
 
 
 Math.avg = function average() {
@@ -33,42 +34,130 @@ function sleep(timeout) {
   return new Promise((resolve) => setTimeout(resolve, timeout));
 }
 
-const canvas = createCanvas();
+class PNGDecoder extends PNG {
+  constructor(args) {
+    super(args);
+    this.pixels = [];
+  }
+
+  decodeToPixels() {
+    return new Promise((resolve) => {
+      this.decode((pixels) => {
+        this.pixels = pixels;
+        resolve();
+      });
+    });
+  }
+
+  getImageData(x, y, w, h) {
+    const {pixels} = this;
+    const len = w * h * 4;
+    const startIndex = x * 4 + y * (w * 4);
+
+    return {data: pixels.slice(startIndex, startIndex + len)};
+  }
+}
+
 const PUZZLE_GAP = 8;
 const PUZZLE_PAD = 10;
 
 class PuzzleRecognizer {
   constructor(bg, patch, y) {
     // console.log(bg);
-    const imgBg = new Image();
-    const imgPatch = new Image();
+    const imgBg = new PNGDecoder(Buffer.from(bg, 'base64'));
+    const imgPatch = new PNGDecoder(Buffer.from(patch, 'base64'));
 
-    imgBg.src = bg;
-    imgPatch.src = patch;
-    // console.log(imgBg.naturalWidth);
+    // console.log(imgBg);
 
     this.bg = imgBg;
     this.patch = imgPatch;
+    this.rawBg = bg;
+    this.rawPatch = patch;
     this.y = y;
-    this.w = imgBg.naturalWidth;
-    this.h = imgBg.naturalHeight;
-    this.ctx = canvas.getContext('2d');
+    this.w = imgBg.width;
+    this.h = imgBg.height;
   }
 
-  run() {
-    const {ctx, w, h} = this;
-
-    canvas.width = w;
-    canvas.height = h;
-    ctx.clearRect(0, 0, w, h);
-    ctx.drawImage(this.bg, 0, 0, w, h);
+  async run() {
+    await this.bg.decodeToPixels();
+    await this.patch.decodeToPixels();
 
     return this.recognize();
   }
 
   recognize() {
-    const {ctx, w: width} = this;
-    const {naturalHeight, naturalWidth} = this.patch;
+    const {ctx, w: width, bg} = this;
+    const {width: patchWidth, height: patchHeight} = this.patch;
+    const posY = this.y + PUZZLE_PAD + ((patchHeight - PUZZLE_PAD) / 2) - (PUZZLE_GAP / 2);
+    // const cData = ctx.getImageData(0, a.y + 10 + 20 - 4, 360, 8).data;
+    const cData = bg.getImageData(0, posY, width, PUZZLE_GAP).data;
+    const lumas = [];
+
+    for (let x = 0; x < width; x++) {
+      var sum = 0;
+
+      // y xais
+      for (let y = 0; y < PUZZLE_GAP; y++) {
+        var idx = x * 4 + y * (width * 4);
+        var r = cData[idx];
+        var g = cData[idx + 1];
+        var b = cData[idx + 2];
+        var luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+
+        sum += luma;
+      }
+
+      lumas.push(sum / PUZZLE_GAP);
+    }
+
+    const n = 2; // minium macroscopic image width (px)
+    const margin = patchWidth - PUZZLE_PAD;
+    const diff = 20; // macroscopic brightness difference
+    const radius = PUZZLE_PAD;
+    for (let i = 0, len = lumas.length - 2 * 4; i < len; i++) {
+      const left = (lumas[i] + lumas[i + 1]) / n;
+      const right = (lumas[i + 2] + lumas[i + 3]) / n;
+      const mi = margin + i;
+      const mLeft = (lumas[mi] + lumas[mi + 1]) / n;
+      const mRigth = (lumas[mi + 2] + lumas[mi + 3]) / n;
+
+      if (left - right > diff && mLeft - mRigth < -diff) {
+        const pieces = lumas.slice(i + 2, margin + i + 2);
+        const median = pieces.sort((x1, x2) => x1 - x2)[20];
+        const avg = Math.avg(pieces);
+
+        // noise reducation
+        if (median > left || median > mRigth) return;
+        if (avg > 100) return;
+        // console.table({left,right,mLeft,mRigth,median});
+        // ctx.fillRect(i+n-radius, 0, 1, 360);
+        // console.log(i+n-radius);
+        return i + n - radius;
+      }
+    }
+
+    // not found
+    return -1;
+  }
+
+  runWithCanvas() {
+    const {createCanvas, Image} = require('canvas');
+    const canvas = createCanvas();
+    const ctx = canvas.getContext('2d');
+    const imgBg = new Image();
+    const imgPatch = new Image();
+    const prefix = 'data:image/png;base64,';
+
+    imgBg.src = prefix + this.rawBg;
+    imgPatch.src = prefix + this.rawPatch;
+    const {naturalWidth: w, naturalHeight: h} = imgBg;
+    canvas.width = w;
+    canvas.height = h;
+    ctx.clearRect(0, 0, w, h);
+    ctx.drawImage(imgBg, 0, 0, w, h);
+
+    const width = w;
+    const {naturalWidth, naturalHeight} = imgPatch;
     const posY = this.y + PUZZLE_PAD + ((naturalHeight - PUZZLE_PAD) / 2) - (PUZZLE_GAP / 2);
     // const cData = ctx.getImageData(0, a.y + 10 + 20 - 4, 360, 8).data;
     const cData = ctx.getImageData(0, posY, width, PUZZLE_GAP).data;
@@ -148,7 +237,6 @@ class JDJRValidator {
       return await tryRecognize();
     };
     const puzzleX = await tryRecognize();
-    // comment
     // console.log(puzzleX);
     const pos = new MousePosFaker(puzzleX).run();
     const d = getCoordinate(pos);
@@ -159,23 +247,23 @@ class JDJRValidator {
     const result = await JDJRValidator.jsonp('/slide/s.html', {d, ...this.data});
 
     if (result.message === 'success') {
-      // comment
-      // console.log(result);
-      // console.log('JDJRValidator: %fs', (Date.now() - this.t) / 1000);
-      $.validate = result.validate
+      console.log(result);
+      console.log('JDJRValidator: %fs', (Date.now() - this.t) / 1000);
+      return result;
     } else {
       console.count(JSON.stringify(result));
       await sleep(300);
-      await this.run();
+      return await this.run();
     }
   }
 
   async recognize() {
     const data = await JDJRValidator.jsonp('/slide/g.html', {e: ''});
     const {bg, patch, y} = data;
-    const uri = 'data:image/png;base64,';
-    const re = new PuzzleRecognizer(uri + bg, uri + patch, y);
-    const puzzleX = re.run();
+    // const uri = 'data:image/png;base64,';
+    // const re = new PuzzleRecognizer(uri+bg, uri+patch, y);
+    const re = new PuzzleRecognizer(bg, patch, y);
+    const puzzleX = await re.run();
 
     if (puzzleX > 0) {
       this.data = {
@@ -199,12 +287,11 @@ class JDJRValidator {
 
       if (x > 0) count++;
       if (i % 50 === 0) {
-        // comment
         // console.log('%f\%', (i / n) * 100);
       }
     }
-    // comment
-    // console.log('successful: %f\%', (count / n) * 100);
+
+    console.log('successful: %f\%', (count / n) * 100);
     console.timeEnd('PuzzleRecognizer');
   }
 
@@ -222,7 +309,7 @@ class JDJRValidator {
         'Host': SERVER,
         'Proxy-Connection': 'keep-alive',
         'Referer': 'https://h5.m.jd.com/babelDiy/Zeus/2wuqXrZrhygTQzYA7VufBEpj4amH/index.html',
-        "User-Agent": $.isNode() ? (process.env.JD_USER_AGENT ? process.env.JD_USER_AGENT : (require('./USER_AGENTS').USER_AGENT)) : ($.getdata('JDUA') ? $.getdata('JDUA') : "jdapp;iPhone;9.4.4;14.3;network/4g;Mozilla/5.0 (iPhone; CPU iPhone OS 14_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148;supportJDSHWK/1"),
+        'User-Agent': UA,
       };
       const req = http.get(url, {headers}, (response) => {
         let res = response;
@@ -329,7 +416,6 @@ class MousePosFaker {
     // [9,1600] [10,1400]
     this.STEP = 9;
     // this.DURATION = 2000;
-    // comment
     // console.log(this.STEP, this.DURATION);
   }
 
@@ -418,12 +504,32 @@ class MousePosFaker {
   }
 }
 
+function injectToRequest(fn) {
+  return (opts, cb) => {
+    fn(opts, async (err, resp, data) => {
+      if (err) {
+        console.error('Failed to request.');
+        return;
+      }
+
+      if (data.search('验证') > -1) {
+        console.log('JDJRValidator trying......');
+        const res = await new JDJRValidator().run();
+
+        opts.url += `&validate=${res.validate}`;
+        fn(opts, cb);
+      } else {
+        cb(err, resp, data);
+      }
+    });
+  };
+}
 
 let cookiesArr = [], cookie = '', jdFruitShareArr = [], isBox = false, notify, newShareCodes, allMessage = '';
-
+$.get = injectToRequest($.get.bind($))
+$.post = injectToRequest($.post.bind($))
 
 !(async () => {
-
   await requireConfig();
   if (!cookiesArr[0]) {
     $.msg($.name, '【提示】请先获取京东账号一cookie\n直接使用NobyDa的京东签到获取', 'https://bean.m.jd.com/bean/signIndex.action', {"open-url": "https://bean.m.jd.com/bean/signIndex.action"});
@@ -449,13 +555,9 @@ let cookiesArr = [], cookie = '', jdFruitShareArr = [], isBox = false, notify, n
       message = '';
       subTitle = '';
 
-      await new JDJRValidator().run();
-      console.log('validate: ', $.validate)
-
       await feed();
 
       let tasks = await taskList();
-      writeFile($.toStr(tasks))
 
       for (let tp of tasks.datas) {
         console.log(tp.taskName, tp.receiveStatus)
@@ -464,24 +566,28 @@ let cookiesArr = [], cookie = '', jdFruitShareArr = [], isBox = false, notify, n
 
         if (tp.receiveStatus === 'unreceive') {
           await award(tp.taskType);
-          await $.wait(1000);
+          await $.wait(5000);
         }
         if (tp.taskName === '浏览频道') {
-          let followChannelList = await getFollowChannels();
-          for (let t of followChannelList['datas']) {
-            if (!t.status) {
-              console.log('┖', t['channelName'])
-              await doTask({"channelId": t.channelId, "taskType": 'FollowChannel'})
-              await $.wait(1000)
+          for (let i = 0; i < 5; i++) {
+            console.log(`\t第${i+1}次浏览频道 检查遗漏`)
+            let followChannelList = await getFollowChannels();
+            for (let t of followChannelList['datas']) {
+              if (!t.status) {
+                console.log('┖', t['channelName'])
+                await doTask(JSON.stringify({"channelId": t.channelId, "taskType": 'FollowChannel'}))
+                await $.wait(5000)
+              }
             }
+            await $.wait(5000)
           }
         }
         if (tp.taskName === '逛会场') {
           for (let t of tp.scanMarketList) {
             if (!t.status) {
-              console.log('┖', t.marketName,)
-              await doTask({marketLink: t.marketLink || t.marketLinkH5, taskType: tp.taskType})
-              await $.wait(1000)
+              console.log('┖', t.marketName)
+              await doTask(JSON.stringify({"marketLink": `${t.marketLink || t.marketLinkH5}`, "taskType": "ScanMarket"}))
+              await $.wait(5000)
             }
           }
         }
@@ -490,32 +596,27 @@ let cookiesArr = [], cookie = '', jdFruitShareArr = [], isBox = false, notify, n
             if (!t.status) {
               console.log('┖', t.skuName)
               await doTask(`sku=${t.sku}`, 'followGood')
-              await $.wait(1000)
+              await $.wait(5000)
             }
           }
         }
-        /*
         if (tp.taskName === '关注店铺') {
           for (let t of tp.followShops) {
             if (!t.status) {
               await doTask(`shopId=${t.shopId}`, 'followShop')
-              // await doTask({shopId:t.shopId}, 'followShop')
-              await $.wait(2000)
+              await $.wait(5000)
             }
           }
         }
-        */
       }
     }
   }
 })()
 
-async function getFollowChannels() {
-  random() === 5 ? await new JDJRValidator().run() : console.log('pass');
-  console.log('validate: ', $.validate)
+function getFollowChannels() {
   return new Promise(resolve => {
     $.get({
-      url: `https://jdjoy.jd.com/common/pet/getFollowChannels?reqSource=h5&invokeKey=NRp8OPxZMFXmGkaE&validate=${$.validate}`,
+      url: `https://jdjoy.jd.com/common/pet/getFollowChannels?reqSource=h5&invokeKey=NRp8OPxZMFXmGkaE`,
       headers: {
         'Host': 'api.m.jd.com',
         'accept': '*/*',
@@ -532,11 +633,10 @@ async function getFollowChannels() {
 }
 
 function taskList() {
-  return new Promise(async resolve => {
-    random() === 5 ? await new JDJRValidator().run() : console.log('pass');
-    console.log('validate: ', $.validate)
+  return new Promise(resolve => {
     $.get({
-      url: `https://jdjoy.jd.com/common/pet/getPetTaskConfig?reqSource=h5&invokeKey=NRp8OPxZMFXmGkaE&validate=${$.validate}`,
+      // url: `https://jdjoy.jd.com/common/pet/getPetTaskConfig?reqSource=h5&invokeKey=NRp8OPxZMFXmGkaE`,
+      url: `https://jdjoy.jd.com/common/pet/getPetTaskConfig?reqSource=h5&invokeKey=NRp8OPxZMFXmGkaE`,
       headers: {
         'Host': 'jdjoy.jd.com',
         'accept': '*/*',
@@ -549,6 +649,8 @@ function taskList() {
       }
     }, (err, resp, data) => {
       try {
+        if (err)
+          console.log(err)
         data = JSON.parse(data)
         resolve(data);
       } catch (e) {
@@ -561,30 +663,28 @@ function taskList() {
 }
 
 function doTask(body, fnId = 'scan') {
-  return new Promise(async resolve => {
-    random() === 5 ? await new JDJRValidator().run() : console.log('pass');
-    console.log('validate: ', $.validate)
-    let config = {
-      // https://jdjoy.jd.com/common/pet/feed?feedCount=80
-      url: `https://jdjoy.jd.com/common/pet/${fnId}?reqSource=h5&invokeKey=NRp8OPxZMFXmGkaE&validate=${$.validate}`,
+  return new Promise(resolve => {
+    $.post({
+      url: `https://jdjoy.jd.com/common/pet/${fnId}?reqSource=h5&invokeKey=NRp8OPxZMFXmGkaE`,
       headers: {
         'Host': 'jdjoy.jd.com',
         'accept': '*/*',
-        'content-type': typeof body === 'object' ? 'application/json' : 'application/x-www-form-urlencoded',
+        'content-type': fnId === 'followGood' ? 'application/x-www-form-urlencoded' : 'application/json',
         'origin': 'https://h5.m.jd.com',
         'accept-language': 'zh-cn',
-        "User-Agent": $.isNode() ? (process.env.JD_USER_AGENT ? process.env.JD_USER_AGENT : (require('./USER_AGENTS').USER_AGENT)) : ($.getdata('JDUA') ? $.getdata('JDUA') : "jdapp;iPhone;9.4.4;14.3;network/4g;Mozilla/5.0 (iPhone; CPU iPhone OS 14_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148;supportJDSHWK/1"),
         'referer': 'https://h5.m.jd.com/',
+        'Content-Type': fnId === 'followGood' ? 'application/x-www-form-urlencoded' : 'application/json; charset=UTF-8',
+        "User-Agent": $.isNode() ? (process.env.JD_USER_AGENT ? process.env.JD_USER_AGENT : (require('./USER_AGENTS').USER_AGENT)) : ($.getdata('JDUA') ? $.getdata('JDUA') : "jdapp;iPhone;9.4.4;14.3;network/4g;Mozilla/5.0 (iPhone; CPU iPhone OS 14_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148;supportJDSHWK/1"),
         'cookie': cookie
       },
-      body: body,
-    }
-    console.log(config)
-    $.post(config, (err, resp, data) => {
+      body: body
+    }, (err, resp, data) => {
+      if (err)
+        console.log('\tdoTask() Error:', err)
       try {
-        console.log('dotask:', data)
+        console.log('\tdotask:', data)
         data = $.toObj(data);
-        // data.success ? console.log('\t任务成功') : console.log('\t任务失败', $.toStr(data))
+        data.success ? console.log('\t任务成功') : console.log('\t任务失败', $.toStr(data))
       } catch (e) {
         $.logErr(e);
       } finally {
@@ -598,7 +698,7 @@ function feed() {
   feedNum = process.env.feedNum ? process.env.feedNum : 80
   return new Promise(resolve => {
     $.post({
-      url: `https://jdjoy.jd.com/common/pet/enterRoom/h5?invitePin=&reqSource=h5&invokeKey=NRp8OPxZMFXmGkaE&validate=${$.validate}`,
+      url: `https://jdjoy.jd.com/common/pet/enterRoom/h5?invitePin=&reqSource=h5&invokeKey=NRp8OPxZMFXmGkaE`,
       headers: {
         'Host': 'jdjoy.jd.com',
         'accept': '*/*',
@@ -611,16 +711,15 @@ function feed() {
         'cookie': cookie
       },
       body: JSON.stringify({})
-    }, async (err, resp, data) => {
+    }, (err, resp, data) => {
       data = $.toObj(data)
       if (new Date().getTime() - new Date(data.data.lastFeedTime) < 10800000) {
         console.log('喂食间隔不够。')
         resolve();
       } else {
         console.log('开始喂食......')
-        random() === 5 ? await new JDJRValidator().run() : console.log('pass');
         $.get({
-          url: `https://jdjoy.jd.com/common/pet/feed?feedCount=${feedNum}&reqSource=h5&invokeKey=NRp8OPxZMFXmGkaE&validate=${$.validate}`,
+          url: `https://jdjoy.jd.com/common/pet/feed?feedCount=${feedNum}&reqSource=h5&invokeKey=NRp8OPxZMFXmGkaE`,
           headers: {
             'Host': 'jdjoy.jd.com',
             'accept': '*/*',
@@ -648,10 +747,9 @@ function feed() {
 }
 
 function award(taskType) {
-  return new Promise(async resolve => {
-    random() === 5 ? await new JDJRValidator().run() : console.log('pass');
+  return new Promise(resolve => {
     $.get({
-      url: `https://jdjoy.jd.com/common/pet/getFood?reqSource=h5&invokeKey=NRp8OPxZMFXmGkaE&taskType=${taskType}&validate=${$.validate}`,
+      url: `https://jdjoy.jd.com/common/pet/getFood?reqSource=h5&invokeKey=NRp8OPxZMFXmGkaE&taskType=${taskType}`,
       headers: {
         'Host': 'jdjoy.jd.com',
         'accept': '*/*',
@@ -678,10 +776,9 @@ function award(taskType) {
 }
 
 function sign() {
-  return new Promise(async resolve => {
-    random() === 5 ? await new JDJRValidator().run() : console.log('pass');
+  return new Promise(resolve => {
     $.get({
-      url: `https://jdjoy.jd.com/common/pet/sign?reqSource=h5&invokeKey=NRp8OPxZMFXmGkaE&taskType=SignEveryDay&validate=${$.validate}`,
+      url: `https://jdjoy.jd.com/common/pet/sign?reqSource=h5&invokeKey=NRp8OPxZMFXmGkaE&taskType=SignEveryDay`,
       headers: {
         'Host': 'jdjoy.jd.com',
         'accept': '*/*',
@@ -742,7 +839,7 @@ function requireConfig() {
 }
 
 function TotalBean() {
-  return new Promise(async resolve => {
+  return new Promise(resolve => {
     const options = {
       "url": `https://wq.jd.com/user/info/QueryJDUserInfo?sceneval=2`,
       "headers": {
