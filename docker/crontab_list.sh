@@ -133,3 +133,5 @@
 15 0,12,22 * * * node /scripts/jd_jump.js >> /scripts/logs/jd_jump.log 2>&1
 #京喜牧场
 15 0,12,22 * * * node /scripts/jd_jxmc.js >> /scripts/logs/jd_jxmc.log 2>&1
+#电竞经理
+0 7,12,18 * * * node /scripts/jd_EsportsManager.js |ts >> /scripts/logs/jd_EsportsManager.log 2>&1
