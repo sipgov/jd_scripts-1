@@ -159,7 +159,7 @@ async function getBody($ = {}) {
 }
 
 let cookiesArr = [], cookie = '', jdFruitShareArr = [], isBox = false, notify, newShareCodes, allMessage = '';
-let body = '', res = '', uuid = 'fc13275e23b2613e6aae772533ca6f349d2e0a86'
+let body = '', res = '', uuid = randomString(40);
 
 !(async () => {
   await requireConfig();
