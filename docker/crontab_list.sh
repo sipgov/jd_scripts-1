@@ -32,6 +32,8 @@
 12 19 10-17 9 * node /scripts/jd_star_shop.js >> /scripts/logs/jd_star_shop.log 2>&1
 # 月满金秋 佳节聚“惠”
 0 14 * * * node /scripts/jd_mid.js >> /scripts/logs/jd_mid.log 2>&1
+# “礼”遇中秋 家团圆
+0 24 * * * node /scripts/jd_mid2.js >> /scripts/logs/jd_mid2.log 2>&1
 
 ##############长期活动##############
 # 签到
