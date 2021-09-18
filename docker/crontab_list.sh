@@ -28,8 +28,10 @@
 # 10 0,8 * * * node /scripts/jd_carnivalcity_help.js >> /scripts/logs/jd_carnivalcity_help.log 2>&1
 # 众筹许愿池
 20 0,2 * * * node /scripts/jd_wish.js >> /scripts/logs/jd_wish.log 2>&1
-
+# 明星小店
 12 19 10-17 9 * node /scripts/jd_star_shop.js >> /scripts/logs/jd_star_shop.log 2>&1
+# 月满金秋 佳节聚“惠”
+0 14 * * * node /scripts/jd_mid.js >> /scripts/logs/jd_mid.log 2>&1
 
 ##############长期活动##############
 # 签到
