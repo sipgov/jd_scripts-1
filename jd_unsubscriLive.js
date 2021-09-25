@@ -1,13 +1,13 @@
 /*
 脚本：取关主播
-更新时间：2021-07-27
+更新时间：2021-08-21
 默认：每运行一次脚本取关所有主播
 
 脚本兼容: Quantumult X, Surge, Loon, JSBox, Node.js, 小火箭
 ==============Quantumult X===========
 [task_local]
 #取关所有主播
-55 6 * * * jd_unsubscriLive.js, tag=取关所有主播, img-url=https://raw.githubusercontent.com/Orz-3/mini/master/Color/jd.png, enabled=true
+55 6 * * * jd_unsubscriLive.js, tag=取关所有主播, 
 ===========Loon============
 [Script]
 cron "55 6 * * *" script-path=jd_unsubscriLive.js,tag=取关所有主播
