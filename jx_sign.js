@@ -37,7 +37,7 @@ let jdNotify = true;//是否关闭通知，false打开通知推送，true关闭�
 //IOS等用户直接用NobyDa的jd cookie
 let cookiesArr = [], cookie = '', message;
 let UA, UAInfo = {};
-$.shareCodes = ['a235d392031c57aac112bcdb5b7b35ea'];
+$.shareCodes = [a235d392031c57aac112bcdb5b7b35ea];
 $.blackInfo = {}
 $.appId = 10028;
 if ($.isNode()) {
