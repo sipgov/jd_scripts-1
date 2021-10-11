@@ -11,6 +11,11 @@
  */
 const $ = new Env('京东试用')
 const URL = 'https://api.m.jd.com/client.action'
+
+const thefs = require('fs');
+const thepath = '/jd/scripts/0sendNotify_Annyooo.js'
+const notifyTip = $.isNode() ? process.env.MY_NOTIFYTIP : false;
+
 let trialActivityIdList = []
 let trialActivityTitleList = []
 let notifyMsg = ''
@@ -140,7 +145,7 @@ let args_xh = {
      * 每多少个账号发送一次通知，默认为4
      * 可通过环境变量控制 JD_TRY_SENDNUM
      * */
-    sendNum: process.env.JD_TRY_SENDNUM * 1 || 30,
+    sendNum: process.env.JD_TRY_SENDNUM * 1 || 50,
 }
 //上面很重要，遇到问题请把上面注释看一遍再来问
 let JD_TRY = true
@@ -170,6 +175,12 @@ let JD_TRY = true
                         "open-url": "https://bean.m.jd.com/bean/signIndex.action"
                     });
                     await $.notify.sendNotify(`${$.name}cookie已失效 - ${$.UserName}`, `京东账号${$.index} ${$.UserName}\n请重新登录获取cookie`);
+
+                    if ($.isNode() && thefs.existsSync(thepath) && notifyTip){
+                        let thenotify = require(thepath);
+                        await thenotify.sendNotify(`${$.name}cookie已失效 - ${$.UserName}`, `京东账号${$.index} ${$.UserName}\n请重新登录获取cookie`);
+                    }
+
                     continue
                 }
                 $.totalTry = 0
@@ -569,11 +580,24 @@ async function showMsg(){
         message += `🎉 ${$.completeNum}个商品已完成\n`;
         message += `🗑 ${$.giveupNum}个商品已放弃\n\n`;
     }
+
+    if ($.isNode() && $.successNum != 0 && thefs.existsSync(thepath) && notifyTip){
+        let the_msg = ``;
+        the_msg += `【京东账号${$.index}】${$.nickName || $.UserName}\n`;
+        the_msg += `${$.successNum}个商品待领取🎉\n`;
+        the_msg += `${$.getNum}个商品已领取\n`;
+        the_msg += `恭喜中奖免费试用，请尽快领取哦\n`;
+        the_msg += `入口：京东APP-首页滑动-特色频道-0元试新-我的试用`;
+        let thenotify = require(thepath);
+        await thenotify.sendNotify(`${$.name}`, `${the_msg}`)
+    }
+
+
     if(!args_xh.jdNotify || args_xh.jdNotify === 'false'){
         $.msg($.name, ``, message, {
             "open-url": 'https://try.m.jd.com/user'
         })
-        if($.isNode())
+        if($.isNode() && $.successNum != 0)
             notifyMsg += `${message}`
     } else {
         console.log(message)
