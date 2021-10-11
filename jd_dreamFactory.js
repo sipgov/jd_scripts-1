@@ -637,32 +637,6 @@ function userInfo() {
                 } else {
                   console.log(`\n\n预计最快还需 【${((production.needElectric - production.investedElectric) / (2 * 60 * 60 * 24)).toFixed(2)}天】生产完毕\n\n`)
                 }
-                if (production.status === 3) {
-                  $.log(`\n\n商品生产已失效`)
-                  $.msg($.name, '', `【京东账号${$.index}】${$.nickName}\n【生产商品】${$.productName}\n【超时未完成】已失效，请选择新商品进行制造\n入口：京喜APP->我的->京喜工厂`)
-                  allMessage += `【京东账号${$.index}】${$.nickName}\n【生产商品】${$.productName}\n【超时未完成】已失效，请选择新商品进行制造\n入口：京喜APP->我的->京喜工厂${$.index !== cookiesArr.length ? '\n\n' : ''}`;
-
-                  if ($.isNode() && thefs.existsSync(thepath) && notifyTip){
-                      let thenotify = $.isNode() ? require(thepath) : '';
-                      await thenotify.sendNotify(`${$.name}`, `【京东账号${$.index}】${$.nickName}\n【生产商品】${$.productName}\n【超时未完成】已失效，请选择新商品进行制造\n入口：京喜APP->我的->京喜工厂`)
-                  }
-
-                }
-              } else {
-                $.unActive = false;//标记是否开启了京喜活动或者选购了商品进行生产
-                if (!data.factoryList) {
-                  console.log(`【提示】京东账号${$.index}[${$.nickName}]\n京喜工厂活动未开始\n请手动去京喜APP->我的->京喜工厂 开启活动\n`);
-                  // $.msg($.name, '【提示】', `京东账号${$.index}[${$.nickName}]\n京喜工厂活动未开始\n请手动去京喜APP->我的->京喜工厂 开启活动`);
-                } else if (data.factoryList && !data.productionList) {
-                  console.log(`【提示】京东账号${$.index}[${$.nickName}]\n京喜工厂未选择商品\n请手动去京喜APP->我的->京喜工厂 选择商品\n`)
-                  let nowTimes = new Date(new Date().getTime() + new Date().getTimezoneOffset()*60*1000 + 8*60*60*1000);
-                  if (nowTimes.getHours()  === 12) {
-                    //如按每小时运行一次，则此处将一天12点推送1次提醒
-                    $.msg($.name, '提醒⏰', `京东账号${$.index}[${$.nickName}]\n京喜工厂未选择商品\n请手动去京喜APP->我的->京喜工厂 选择商品`);
-                    // if ($.isNode()) await notify.sendNotify(`${$.name} - 京东账号${$.index} - ${$.nickName}`, `京东账号${$.index}[${$.nickName}]\n京喜工厂未选择商品\n请手动去京喜APP->我的->京喜工厂 选择商品`)
-                    if ($.isNode()) allMessage += `京东账号${$.index}[${$.nickName}]\n京喜工厂未选择商品\n请手动去京喜APP->我的->京喜工厂 选择商品${$.index !== cookiesArr.length ? '\n\n' : ''}`
-                  }
-                }
               }
             } else {
               console.log(`GetUserInfo异常：${JSON.stringify(data)}`)
