@@ -24,7 +24,7 @@ const notify = $.isNode() ? require('./sendNotify') : '';
 const jdCookieNode = $.isNode() ? require('./jdCookie.js') : '';
 //IOS等用户直接用NobyDa的jd cookie
 let cookiesArr = [], cookie = '';
-$.redPacketId = ['E2jJrBI8OFgRFZ'];
+$.redPacketId = ['E2jJrBI8OFgRFZ','￥E2jJrBI8OFgRFZ￥','17.0:/￥E2jJrBI8OFgRFZ￥达kai→亰栋{a※pp}，⛅【红包】你有一个红包待领取，最高888元，快来看看吧！'];
 if ($.isNode()) {
   Object.keys(jdCookieNode).forEach((item) => {
     cookiesArr.push(jdCookieNode[item])
