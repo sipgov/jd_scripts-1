@@ -21,7 +21,7 @@ if ($.isNode()) {
 }
 const JD_API_HOST = 'https://api.m.jd.com/client.action';
 let inviteCodes = [
-
+    'ZXASTT0225KkcRhlK9VOBJB_zwPBefAFjRWn6u7zB55awQ'
 ]
 $.shareCodesArr = [];
 
@@ -598,7 +598,7 @@ function requireConfig() {
     return new Promise(resolve => {
         console.log(`开始获取${$.name}配置文件\n`);
         //Node.js用户请在jdCookie.js处填写京东ck;
-        let shareCodes = ['ZXASTT0225KkcRhlK9VOBJB_zwPBefAFjRWn6u7zB55awQ'];
+        let shareCodes = [];
         if ($.isNode()) {
             if (process.env.JD_CITY_EXCHANGE) {
                 exchangeFlag = process.env.JD_CITY_EXCHANGE || exchangeFlag;
