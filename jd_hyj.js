@@ -9,7 +9,7 @@ let cookiesArr = [],
     cookie = '',
     message;
 let secretp = '',
-    inviteId = []
+    inviteId = ['ZXASTT0225KkcRhlK9VOBJB_zwPBefAFjRWn6u7zB55awQ']
 
 if ($.isNode()) {
     Object.keys(jdCookieNode).forEach((item) => {
