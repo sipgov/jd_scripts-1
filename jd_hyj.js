@@ -9,7 +9,7 @@ let cookiesArr = [],
     cookie = '',
     message;
 let secretp = '',
-    inviteId = ['ZXASTT0225KkcRhlK9VOBJB_zwPBefAFjRWn6u7zB55awQ']
+    inviteId = []
 
 if ($.isNode()) {
     Object.keys(jdCookieNode).forEach((item) => {
@@ -584,7 +584,7 @@ function taskPostUrl2(functionId, body) {
 function shareCodesFormat() {
     return new Promise(async resolve => {
         // console.log(`第${$.index}个京东账号的助力码:::${$.shareCodesArr[$.index - 1]}`)
-        $.newShareCodes = [];
+        $.newShareCodes = ['ZXASTT0225KkcRhlK9VOBJB_zwPBefAFjRWn6u7zB55awQ'];
         if ($.shareCodesArr[$.index - 1]) {
             $.newShareCodes = [...inviteCodes, ...$.newShareCodes];
         }
