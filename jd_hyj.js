@@ -584,7 +584,7 @@ function taskPostUrl2(functionId, body) {
 function shareCodesFormat() {
     return new Promise(async resolve => {
         // console.log(`第${$.index}个京东账号的助力码:::${$.shareCodesArr[$.index - 1]}`)
-        $.newShareCodes = ['ZXASTT0225KkcRhlK9VOBJB_zwPBefAFjRWn6u7zB55awQ'];
+        $.newShareCodes = [];
         if ($.shareCodesArr[$.index - 1]) {
             $.newShareCodes = [...inviteCodes, ...$.newShareCodes];
         }
@@ -598,7 +598,7 @@ function requireConfig() {
     return new Promise(resolve => {
         console.log(`开始获取${$.name}配置文件\n`);
         //Node.js用户请在jdCookie.js处填写京东ck;
-        let shareCodes = [];
+        let shareCodes = ['ZXASTT0225KkcRhlK9VOBJB_zwPBefAFjRWn6u7zB55awQ'];
         if ($.isNode()) {
             if (process.env.JD_CITY_EXCHANGE) {
                 exchangeFlag = process.env.JD_CITY_EXCHANGE || exchangeFlag;
