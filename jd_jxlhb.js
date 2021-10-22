@@ -32,7 +32,7 @@ if ($.isNode()) {
 } else {
   cookiesArr = [$.getdata("CookieJD"), $.getdata("CookieJD2"), ...$.toObj($.getdata("CookiesJD") || "[]").map((item) => item.cookie)].filter((item) => !!item);
 }
-$.packetIdArr = [];
+$.packetIdArr = ['lh3It-_SzHfDNhzEOB_vYYnL63Zg8vyeMwujE3dllfLCgZu354Ygen67paPI6P56'];
 $.activeId = '489177';
 const BASE_URL = 'https://m.jingxi.com/cubeactive/steprewardv3'
 !(async () => {
