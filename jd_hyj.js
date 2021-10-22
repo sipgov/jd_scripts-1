@@ -584,7 +584,7 @@ function taskPostUrl2(functionId, body) {
 function shareCodesFormat() {
     return new Promise(async resolve => {
       console.log(`第${$.index}个京东账号的助力码:::${$.shareCodesArr[$.index - 1]}`)
-        $.newShareCodes = [];
+        $.newShareCodes = ['jd_67c07f457d7d8'];
         if ($.shareCodesArr[$.index - 1]) {
             $.newShareCodes = [...inviteCodes, ...$.newShareCodes];
         }
