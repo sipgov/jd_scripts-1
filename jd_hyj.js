@@ -21,9 +21,9 @@ if ($.isNode()) {
 }
 const JD_API_HOST = 'https://api.m.jd.com/client.action';
 let inviteCodes = [
-
+    
 ]
-$.shareCodesArr = [];
+$.shareCodesArr = ['ZXASTT0225KkcRhlK9VOBJB_zwPBefAFjRWn6u7zB55awQ'];
 
 !(async() => {
     if (!cookiesArr[0]) {
@@ -583,7 +583,7 @@ function taskPostUrl2(functionId, body) {
 //格式化助力码
 function shareCodesFormat() {
     return new Promise(async resolve => {
-        // console.log(`第${$.index}个京东账号的助力码:::${$.shareCodesArr[$.index - 1]}`)
+      console.log(`第${$.index}个京东账号的助力码:::${$.shareCodesArr[$.index - 1]}`)
         $.newShareCodes = [];
         if ($.shareCodesArr[$.index - 1]) {
             $.newShareCodes = [...inviteCodes, ...$.newShareCodes];
